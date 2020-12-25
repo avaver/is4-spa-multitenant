@@ -8,7 +8,7 @@ const Login = () => {
 
   const login = async () => {
     const returnUrl = new URLSearchParams(window.location.search).get('ReturnUrl');
-    const response = await fetch('/api/login', {
+    const response = await fetch('/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password, returnUrl })

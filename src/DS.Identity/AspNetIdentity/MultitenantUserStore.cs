@@ -16,17 +16,13 @@ namespace DS.Identity.AspNetIdentity
         public async Task<MultitenantUser> FindByNameAndTenantAsync(string normalizedUserName, string normalizedTenantName, CancellationToken cancellationToken = default)
         {
             return await Context.Set<MultitenantUser>()
-                .AsNoTracking()
-                .Where(u => u.NormalizedUserName == normalizedUserName && u.NormalizedTenantName == normalizedTenantName)
-                .SingleOrDefaultAsync(cancellationToken);
+                .SingleOrDefaultAsync(u => u.NormalizedUserName == normalizedUserName && u.NormalizedTenantName == normalizedTenantName, cancellationToken);
         }
 
         public async Task<MultitenantUser> FindByEmailAndTenantAsync(string normalizedEmail, string normalizedTenantName, CancellationToken cancellationToken = default)
         {
             return await Context.Set<MultitenantUser>()
-                .AsNoTracking()
-                .Where(u => u.NormalizedEmail == normalizedEmail && u.NormalizedTenantName == normalizedTenantName)
-                .SingleOrDefaultAsync(cancellationToken);
+                .SingleOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail && u.NormalizedTenantName == normalizedTenantName, cancellationToken);
         }
     }
 }

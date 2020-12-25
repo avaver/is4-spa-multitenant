@@ -11,7 +11,7 @@ namespace DS.Identity.Data
 {
     public static class Config
     {
-        const string LOCAL_CLIENT_URI = "http://localhost:3100";
+        const string LOCAL_CLIENT_URI = "http://dentalsuite.local:3100";
 
         public static IEnumerable<IdentityResource> IdentityResources =>
             new IdentityResource[]
@@ -29,7 +29,6 @@ namespace DS.Identity.Data
                     {
                         JwtClaimTypes.Name,
                         JwtClaimTypes.Email,
-                        JwtClaimTypes.EmailVerified,
                         "tenant"
                     }
                 }
@@ -47,15 +46,23 @@ namespace DS.Identity.Data
                     RequireClientSecret = false,
                     RequireConsent = false,
                     AllowOfflineAccess = true,
+                    UpdateAccessTokenClaimsOnRefresh = true,
 
-                    AllowedCorsOrigins = { LOCAL_CLIENT_URI, "https://localhost:3000" },
-                    PostLogoutRedirectUris = { $"{LOCAL_CLIENT_URI}/", "https://localhost:3000/login" },
+                    AllowedCorsOrigins = { LOCAL_CLIENT_URI },
+                    PostLogoutRedirectUris = 
+                    { 
+                        $"{LOCAL_CLIENT_URI}/",
+                        "http://happyteeth.dentalsuite.local:3100/",
+                        "http://superdent.dentalsuite.local:3100/",
+                    },
                     RedirectUris = 
                     { 
-                        $"{LOCAL_CLIENT_URI}/authentication/callback",
-                        $"{LOCAL_CLIENT_URI}/authentication/silentcallback",
-                        "https://localhost:3000/authentication/callback",
-                        "https://localhost:3000/authentication/silentcallback"
+                        //$"{LOCAL_CLIENT_URI}/authentication/callback",
+                        //$"{LOCAL_CLIENT_URI}/authentication/silentcallback",
+                        "http://happyteeth.dentalsuite.local:3100/authentication/callback",
+                        "http://happyteeth.dentalsuite.local:3100/authentication/silentcallback",
+                        "http://superdent.dentalsuite.local:3100/authentication/callback",
+                        "http://superdent.dentalsuite.local:3100/authentication/silentcallback",
                     },
 
                     AllowedScopes = 

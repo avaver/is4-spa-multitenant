@@ -9,7 +9,7 @@ namespace DS.Identity.Controllers
 {
     [ApiController]
     [Route("[controller]/[action]")]
-    public class ApiController : ControllerBase
+    public class AuthController : ControllerBase
     {
         public class LoginRequest
         {
@@ -22,7 +22,7 @@ namespace DS.Identity.Controllers
         private readonly MultitenantUserManager _userManager;
         private readonly SignInManager<MultitenantUser> _signInManager;
 
-        public ApiController(IIdentityServerInteractionService identity, MultitenantUserManager userManager, SignInManager<MultitenantUser> signInManager)
+        public AuthController(IIdentityServerInteractionService identity, MultitenantUserManager userManager, SignInManager<MultitenantUser> signInManager)
         {
             _identity = identity;
             _userManager = userManager;
@@ -70,11 +70,11 @@ namespace DS.Identity.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> ErrorDetails([FromQuery(Name = "errorId")] string errorId)
+        public async Task<IActionResult> ErrorRedirect([FromQuery(Name = "errorId")] string errorId)
         {
             var error = await _identity.GetErrorContextAsync(errorId);
             var message = error == null ? "unknown error" : error.ErrorDescription;
-            return Redirect($"/error?message={message}");
+            return Ok(new { message });
         }
     }
 }

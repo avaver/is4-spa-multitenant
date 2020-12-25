@@ -7,7 +7,7 @@ const Logout = () => {
   useEffect(() => {
     const logoutId = new URLSearchParams(window.location.search).get('logoutId');
     (async () => {
-      const response = await fetch(`/api/logout?logoutId=${logoutId}`);
+      const response = await fetch(`/auth/logout?logoutId=${logoutId}`);
       const data = await response.json();
       
       if (data.iframeUrl) {
