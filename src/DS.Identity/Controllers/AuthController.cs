@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
-using DS.Identity.AspNetIdentity;
+using DS.Identity.Multitenancy;
 
 namespace DS.Identity.Controllers
 {
@@ -54,7 +54,7 @@ namespace DS.Identity.Controllers
         {
             var context = await _identity.GetLogoutContextAsync(logoutId);
 
-            if (User?.Identity.IsAuthenticated == true)
+            if (User?.Identity?.IsAuthenticated == true)
             {
                 await HttpContext.SignOutAsync();
             }
@@ -62,8 +62,8 @@ namespace DS.Identity.Controllers
             return Ok(new
             {
                 logoutId,
-                client = string.IsNullOrEmpty(context?.ClientName) ? context?.ClientId : context?.ClientName,
-                prompt = context.ShowSignoutPrompt,
+                client = string.IsNullOrEmpty(context?.ClientName) ? context?.ClientId : context.ClientName,
+                prompt = context?.ShowSignoutPrompt,
                 iframeUrl = context?.SignOutIFrameUrl,
                 redirectUrl = context?.PostLogoutRedirectUri
             });

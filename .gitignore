@@ -301,3 +301,6 @@ __pycache__/
 /src/DS.UserManagementServer/Serilogs
 *tempkey.jwk
 *tempkey.rsa
+
+.DS_Store
+*.db

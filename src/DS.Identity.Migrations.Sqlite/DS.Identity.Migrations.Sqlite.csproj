@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="IdentityServer4.EntityFramework" Version="4.1.1" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <ProjectReference Include="../DS.Identity.Multitenancy/DS.Identity.Multitenancy.csproj" />
+    </ItemGroup>
+</Project>
