@@ -1,12 +1,16 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Runtime.InteropServices;
 using DS.Identity.IdentityServer;
 using DS.Identity.Multitenancy;
+using IdentityModel;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using IdentityServer4.ResponseHandling;
 using IdentityServer4.Services;
 using IdentityServer4.Validation;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 
 namespace DS.Identity.Extensions
@@ -58,7 +62,6 @@ namespace DS.Identity.Extensions
                     options.UserInteraction.ErrorUrl = "/error";
                 })
                 .AddAspNetIdentity<MultitenantUser>()
-                .AddProfileService<MultitenantProfileService>()
                 .AddDeveloperSigningCredential();
 
             if (platform == "mac" || string.IsNullOrEmpty(platform) && RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
@@ -89,6 +92,24 @@ namespace DS.Identity.Extensions
             services.AddScoped<IAuthorizeInteractionResponseGenerator, DsInteractionResponseGenerator>();
             services.AddSingleton<IRedirectUriValidator, DsRedirectUriValidator>();
             services.AddSingleton<ICorsPolicyService, DsCorsPolicyService>();
+
+            return services;
+        }
+
+        public static IServiceCollection AddLocalApiAuth(this IServiceCollection services)
+        {
+            // Redirect to landing page if the user is not logged in as we don;t know which tenant user belongs to
+            services.ConfigureApplicationCookie(c =>
+            {
+                c.LoginPath = new PathString("/");
+            });
+            
+            // For authenticating to account management controllers
+            services.AddAuthorization(o => o.DefaultPolicy = 
+                new AuthorizationPolicyBuilder()
+                    .AddAuthenticationSchemes(IdentityConstants.ApplicationScheme)
+                    .RequireAuthenticatedUser()
+                    .Build());
 
             return services;
         }

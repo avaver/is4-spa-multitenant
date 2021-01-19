@@ -7,5 +7,7 @@ namespace DS.Identity.Multitenancy
         public string TenantName { get; set; }
 
         public string NormalizedTenantName { get; set; }
+        
+        public bool IsClinicAdmin { get; set; }
     }
 }

@@ -1,53 +1,79 @@
 import { useEffect, useState } from 'react';
-import './App.css';
 
 const Login = () => {
   const [tenant, setTenant] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [status, setStatus] = useState('');
 
   const login = async () => {
     const returnUrl = new URLSearchParams(window.location.search).get('ReturnUrl');
     const response = await fetch('/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, returnUrl })
+      body: JSON.stringify({ username, password, tenant, returnUrl: returnUrl || '/account' }),
     });
 
-    const data = await response.json();
-    if (data && data.ok) {
-      window.location = data.redirectUrl;
+    if (response.status !== 200) {
+      setStatus('Login failed: ' + response.statusText);
+      return;
     }
-  }
+
+    const data = await response.json();
+    if (data?.redirectUrl) {
+      window.location.href = data.redirectUrl;
+    }
+  };
 
   useEffect(() => {
     const returnUrl = new URLSearchParams(window.location.search).get('ReturnUrl');
-    if (!returnUrl) {
-      window.location.assign('/error?message=invalid login request');
-    } 
+    // if (!returnUrl) {
+    //   window.location.assign('/error?message=invalid login request');
+    //   return;
+    // }
+    const urlTenant = new URLSearchParams(window.location.search).get('tenant');
     const acrValues = new URLSearchParams(decodeURI(returnUrl!)).get('acr_values');
     const acrTenant = acrValues?.toLowerCase().replace('tenant:', '').split(' ')[0];
-    if (!acrTenant) {
+    const tenant = urlTenant || acrTenant;
+    if (!tenant) {
       window.location.assign('/error?message=tenant is missing');
+      return;
     }
-    setTenant(acrTenant!);
+    setTenant(tenant);
   }, []);
 
   return (
-  <div className="App">
-    <header className="App-header">
-      <span style={{color: 'white'}}>Signing into {tenant}</span>
+    <form onSubmit={(e) => e.preventDefault()} method="POST">
+      <span style={{ color: 'white' }}>Signing into {tenant}</span>
       <div>
-        <input type="text" name="username" id="username" value={username} onChange={(e) => setUsername(e.target.value)} />
+        <input
+          autoFocus
+          type="text"
+          name="username"
+          id="username"
+          value={username}
+          autoComplete="username"
+          onChange={(e) => setUsername(e.target.value)}
+        />
       </div>
       <div>
-        <input type="password" name="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <input
+          type="password"
+          name="password"
+          id="password"
+          value={password}
+          autoComplete="current-password"
+          onChange={(e) => setPassword(e.target.value)}
+        />
       </div>
-      <div>
+      <div style={{ marginTop: '8px' }}>
         <button onClick={login}>Login</button>
       </div>
-  </header>
-</div>)
-}
+      <div style={{ marginTop: '12px' }}>
+        <span style={{ color: 'orange' }}>{status}</span>
+      </div>
+    </form>
+  );
+};
 
 export default Login;

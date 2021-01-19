@@ -17,7 +17,6 @@ using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using IdentityServer4.ResponseHandling;
 
 namespace DS.Identity
 {
@@ -41,11 +40,23 @@ namespace DS.Identity
             //         .AllowAnyHeader()
             //     )
             // );
-            services.AddControllers();
-            services.AddSpaStaticFiles(config => config.RootPath = "../identity-ui/build");
-
+            services.AddControllers().AddJsonOptions(o => o.JsonSerializerOptions.WriteIndented = true);
+            
             services.AddMultitenantIdentity(_configuration);
             services.AddMultitenantIdentityServer(_configuration);
+            services.Configure<IdentityOptions>(o =>
+            {
+                o.Password.RequireDigit = false;
+                o.Password.RequireLowercase = false;
+                o.Password.RequireUppercase = false;
+                o.Password.RequireNonAlphanumeric = false;
+                o.Password.RequiredUniqueChars = 1;
+                o.Password.RequiredLength = 4;
+            });
+                
+            services.AddLocalApiAuth();
+
+            services.AddSpaStaticFiles(config => config.RootPath = "../identity-ui/build");
         }
 
         public void Configure(IApplicationBuilder app, UserManager<MultitenantUser> userManager, ILogger<Startup> logger)
@@ -55,9 +66,11 @@ namespace DS.Identity
                 app.UseDeveloperExceptionPage();
             }
 
+            // Order is important here
             // app.UseCors();
             app.UseRouting();
             app.UseIdentityServer();
+            app.UseAuthorization();
             app.UseEndpoints(endpoints => endpoints.MapControllers());
 
             app.UseStaticFiles();
@@ -105,7 +118,7 @@ namespace DS.Identity
                     await userManager.DeleteAsync(dbAdmin);
                 }
 
-                if (!(await userManager.CreateAsync(user, "Aa!234")).Succeeded)
+                if (!(await userManager.CreateAsync(user, "1111")).Succeeded)
                 {
                     logger.LogError($"Failed to create user {user.UserName}@{user.TenantName}");
                 }
@@ -125,6 +138,8 @@ namespace DS.Identity
                     UserName = "sd",
                     Email = "sd@superdent.dk",
                     TenantName = "superdent",
+                    PhoneNumber = "+380989997755",
+                    IsClinicAdmin = false
                 },
                 new MultitenantUser
                 {
@@ -132,20 +147,26 @@ namespace DS.Identity
                     UserName = "ht",
                     Email = "ht@happyteeth.dk",
                     TenantName = "happyteeth",
+                    PhoneNumber = "+380989997755",
+                    IsClinicAdmin = false
                 },
                 new MultitenantUser
                 {
                     Id = "772D9024-A03B-4607-8126-393AEFD88351",
-                    UserName = "admin",
+                    UserName = "adm",
                     Email = "avaver@gmail.com",
                     TenantName = "superdent",
+                    PhoneNumber = "+380989997755",
+                    IsClinicAdmin = true
                 },
                 new MultitenantUser
                 {
                     Id = "48295BA6-5E3C-469C-9E36-5FA4EDD7AE0F",
-                    UserName = "admin",
+                    UserName = "adm",
                     Email = "avaver@gmail.com",
                     TenantName = "happyteeth",
+                    PhoneNumber = "+380989997755",
+                    IsClinicAdmin = true
                 }
             };
     }

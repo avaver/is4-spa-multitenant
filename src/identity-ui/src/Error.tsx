@@ -6,23 +6,18 @@ const Error = () => {
 
   useEffect(() => {
     const errorId = new URLSearchParams(window.location.search).get('errorId');
-    const urlMessage = new URLSearchParams(window.location.search).get('message')
+    const urlMessage = new URLSearchParams(window.location.search).get('message');
     if (errorId) {
       (async () => {
         const response = await fetch('/auth/errorredirect?errorId=' + errorId);
         const data = await response.json();
         setMessage(data.message);
-      })()
+      })();
     } else if (urlMessage) {
       setMessage(urlMessage);
     }
   }, []);
-  return (
-    <div className="App">
-      <header className="App-header">
-        <div>Error: {message}</div>
-      </header>
-    </div>);
-}
+  return <div>Error: {message}</div>;
+};
 
 export default Error;

@@ -1,20 +1,22 @@
 ﻿using IdentityServer4.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using DS.Identity.Multitenancy;
+using Microsoft.AspNetCore.Authorization;
 
 namespace DS.Identity.Controllers
 {
     [ApiController]
     [Route("[controller]/[action]")]
+    [AllowAnonymous]
     public class AuthController : ControllerBase
     {
         public class LoginRequest
         {
             public string Username { get; set; }
             public string Password { get; set; }
+            public string Tenant { get; set; }
             public string ReturnUrl { get; set; }
         }
 
@@ -33,15 +35,16 @@ namespace DS.Identity.Controllers
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             var context = await _identity.GetAuthorizationContextAsync(request.ReturnUrl);
-            if (context != null)
+            var tenant = context != null ? context.Tenant : request.Tenant;
+            if (!string.IsNullOrEmpty(tenant))
             {
-                var user = await _userManager.FindByNameAndTenantAsync(request.Username, context.Tenant);
+                var user = await _userManager.FindByNameAndTenantAsync(request.Username, tenant);
                 if (user != null)
                 {
                     var result = await _signInManager.PasswordSignInAsync(user, request.Password, true, false);
                     if (result.Succeeded)
                     {
-                        return new JsonResult(new { RedirectUrl = request.ReturnUrl, ok = true });
+                        return new JsonResult(new { RedirectUrl = request.ReturnUrl });
                     }
                 }
             }
@@ -56,7 +59,7 @@ namespace DS.Identity.Controllers
 
             if (User?.Identity?.IsAuthenticated == true)
             {
-                await HttpContext.SignOutAsync();
+                await _signInManager.SignOutAsync();
             }
 
             return Ok(new

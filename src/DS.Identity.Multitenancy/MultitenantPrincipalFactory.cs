@@ -16,7 +16,8 @@ namespace DS.Identity.Multitenancy
             var principal = await base.CreateAsync(user);
             if (principal.Identity is ClaimsIdentity identity)
             {
-                identity.AddClaim(new Claim(MultitenantClaimTypes.Tenant, user.TenantName));
+                identity.AddClaim(new Claim(MultitenantClaimTypes.Tenant, user.TenantName, ClaimValueTypes.String));
+                identity.AddClaim(new Claim(MultitenantClaimTypes.TenantAdmin, user.IsClinicAdmin.ToString(), ClaimValueTypes.Boolean));
             }
             return principal;
         }

@@ -1,23 +1,29 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
+import './App.css';
 import reportWebVitals from './reportWebVitals';
-import { BrowserRouter as Router, Redirect, Route, Switch } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 import Login from './Login';
 import Logout from './Logout';
 import Error from './Error';
+import Account from './Account';
+import Home from './Home';
 
 ReactDOM.render(
   <React.StrictMode>
     <Router>
-      <Switch>
-        <Route path="/login" exact={true} component={Login}></Route>
-        <Route path="/logout" exact={true} component={Logout}></Route>
-        <Route path="/error" exact={true} component={Error}></Route>
-        <Route path="/">
-          <Redirect to="/login" />
-        </Route>
-      </Switch>
+      <div className="App">
+        <header className="App-header">
+          <Switch>
+            <Route path="/login" exact component={Login}></Route>
+            <Route path="/logout" exact component={Logout}></Route>
+            <Route path="/error" exact component={Error}></Route>
+            <Route path="/account" exact component={Account}></Route>
+            <Route path="/" exact component={Home}></Route>
+          </Switch>
+        </header>
+      </div>
     </Router>
   </React.StrictMode>,
   document.getElementById('root')

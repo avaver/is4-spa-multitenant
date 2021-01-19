@@ -9,7 +9,7 @@ const Logout = () => {
     (async () => {
       const response = await fetch(`/auth/logout?logoutId=${logoutId}`);
       const data = await response.json();
-      
+
       if (data.iframeUrl) {
         setIframe(data.iframeUrl);
       }
@@ -21,7 +21,7 @@ const Logout = () => {
       }
     })();
   }, []);
-  return iframe ? <iframe title="logout" width={0} height={0} src={iframe}></iframe> : <div>{message}</div>
-}
+  return iframe ? <iframe title="logout" width={0} height={0} src={iframe}></iframe> : <div>{message}</div>;
+};
 
 export default Logout;

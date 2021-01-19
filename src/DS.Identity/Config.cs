@@ -14,23 +14,32 @@ namespace DS.Identity
     {
         const string LocalClientUri = "http://dentalsuite.local";
 
+        // Claims available to client via id_token
         public static IEnumerable<IdentityResource> IdentityResources =>
             new IdentityResource[]
             { 
                 new IdentityResources.OpenId(),
-                new IdentityResources.Profile()
+                new(Constants.DsProfileScope, "DentalSuite User Profile",
+           new[]
+                    {
+                        JwtClaimTypes.Name,
+                        MultitenantClaimTypes.Tenant
+                    })
             };
 
+        // Claims available to api via access_token
         public static IEnumerable<ApiScope> ApiScopes =>
             new[]
             {
                 new ApiScope(Constants.DsApiScope, "DentalSuite Nexta API")
                 {
-                    UserClaims = new List<string>
+                    UserClaims = new []
                     {
                         JwtClaimTypes.Name,
                         JwtClaimTypes.Email,
-                        MultitenantClaimTypes.Tenant
+                        JwtClaimTypes.PhoneNumber,
+                        MultitenantClaimTypes.Tenant,
+                        MultitenantClaimTypes.TenantAdmin
                     }
                 }
             };
@@ -56,7 +65,7 @@ namespace DS.Identity
                     AllowedScopes = 
                     { 
                         IdentityServerConstants.StandardScopes.OpenId, 
-                        IdentityServerConstants.StandardScopes.Profile,
+                        Constants.DsProfileScope,
                         Constants.DsApiScope
                     },
                 }

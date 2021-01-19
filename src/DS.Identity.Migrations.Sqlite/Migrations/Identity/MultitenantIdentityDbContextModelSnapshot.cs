@@ -14,9 +14,9 @@ namespace DS.Identity.Migrations.Sqlite.Migrations.Identity
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "5.0.1");
+                .HasAnnotation("ProductVersion", "5.0.2");
 
-            modelBuilder.Entity("DS.Identity.AspNetIdentity.MultitenantUser", b =>
+            modelBuilder.Entity("DS.Identity.Multitenancy.MultitenantUser", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("TEXT");
@@ -34,6 +34,11 @@ namespace DS.Identity.Migrations.Sqlite.Migrations.Identity
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsClinicAdmin")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("INTEGER");
@@ -230,7 +235,7 @@ namespace DS.Identity.Migrations.Sqlite.Migrations.Identity
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
-                    b.HasOne("DS.Identity.AspNetIdentity.MultitenantUser", null)
+                    b.HasOne("DS.Identity.Multitenancy.MultitenantUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -239,7 +244,7 @@ namespace DS.Identity.Migrations.Sqlite.Migrations.Identity
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
-                    b.HasOne("DS.Identity.AspNetIdentity.MultitenantUser", null)
+                    b.HasOne("DS.Identity.Multitenancy.MultitenantUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -254,7 +259,7 @@ namespace DS.Identity.Migrations.Sqlite.Migrations.Identity
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("DS.Identity.AspNetIdentity.MultitenantUser", null)
+                    b.HasOne("DS.Identity.Multitenancy.MultitenantUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -263,7 +268,7 @@ namespace DS.Identity.Migrations.Sqlite.Migrations.Identity
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.HasOne("DS.Identity.AspNetIdentity.MultitenantUser", null)
+                    b.HasOne("DS.Identity.Multitenancy.MultitenantUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)

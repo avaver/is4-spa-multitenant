@@ -32,6 +32,10 @@ namespace DS.Identity.Multitenancy
                 .IsRequired()
                 .HasMaxLength(256);
 
+            user.Property(u => u.IsClinicAdmin)
+                .IsRequired()
+                .HasDefaultValue(false);
+
             user.HasIndex(u => new { u.NormalizedUserName, u.NormalizedTenantName }).IsUnique();
             user.HasIndex(u => new { u.NormalizedEmail, u.NormalizedTenantName }).IsUnique();
         }
