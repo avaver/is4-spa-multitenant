@@ -5,5 +5,7 @@ namespace DS.Identity
         public const string DsWebClientId = "dentalsuite.web";
         public const string DsApiScope = "dentalsuite.api";
         public const string DsProfileScope = "dentalsuite.profile";
+
+        public const string DsClinicAdminPolicy = "dentalsuite.clinicadmin";
     }
 }

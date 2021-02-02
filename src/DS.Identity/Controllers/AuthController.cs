@@ -1,9 +1,12 @@
-﻿using IdentityServer4.Services;
+﻿using System.Collections.Generic;
+using System.Linq;
+using IdentityServer4.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using DS.Identity.Multitenancy;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 
 namespace DS.Identity.Controllers
 {
@@ -20,15 +23,22 @@ namespace DS.Identity.Controllers
             public string ReturnUrl { get; set; }
         }
 
+        public class TenantRequest
+        {
+            public string ReturnUrl { get; set; }
+        }
+
         private readonly IIdentityServerInteractionService _identity;
         private readonly MultitenantUserManager _userManager;
         private readonly SignInManager<MultitenantUser> _signInManager;
+        private readonly MultitenantIdentityDbContext _dbcontext;
 
-        public AuthController(IIdentityServerInteractionService identity, MultitenantUserManager userManager, SignInManager<MultitenantUser> signInManager)
+        public AuthController(IIdentityServerInteractionService identity, MultitenantUserManager userManager, SignInManager<MultitenantUser> signInManager, MultitenantIdentityDbContext dbcontext)
         {
             _identity = identity;
             _userManager = userManager;
             _signInManager = signInManager;
+            _dbcontext = dbcontext;
         }
 
         [HttpPost]
@@ -41,10 +51,22 @@ namespace DS.Identity.Controllers
                 var user = await _userManager.FindByNameAndTenantAsync(request.Username, tenant);
                 if (user != null)
                 {
-                    var result = await _signInManager.PasswordSignInAsync(user, request.Password, true, false);
+                    var result = await _signInManager.PasswordSignInAsync(user, request.Password, false, false);
                     if (result.Succeeded)
                     {
-                        return new JsonResult(new { RedirectUrl = request.ReturnUrl });
+                        var tenantInfo = _dbcontext.Tenants.Include(t => t.Keys).Single(t => t.Name == tenant);
+                        if (!user.IsClinicAdmin && (tenantInfo.Keys == null || tenantInfo.Keys.Count <= 1))
+                        {
+                            return Unauthorized();
+                        }
+
+                        return new JsonResult(new
+                        {
+                            RedirectUrl = request.ReturnUrl, 
+                            Keys = user.IsClinicAdmin && tenantInfo.AdminKeyId != null 
+                                ? new[] { tenantInfo.AdminKeyId } 
+                                : tenantInfo.Keys?.Where(k => k.Id != tenantInfo.AdminKeyId).Select(k => k.Id).ToArray()
+                        });
                     }
                 }
             }

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
 
 
+using System;
 using DS.Identity.Extensions;
 using DS.Identity.Multitenancy;
 using IdentityServer4.EntityFramework.DbContexts;
@@ -17,6 +18,7 @@ using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using DS.Identity.Services;
 
 namespace DS.Identity
 {
@@ -53,8 +55,21 @@ namespace DS.Identity
                 o.Password.RequiredUniqueChars = 1;
                 o.Password.RequiredLength = 4;
             });
+            services.ConfigureApplicationCookie(o =>
+            {
+                o.SlidingExpiration = true;
+                o.ExpireTimeSpan = TimeSpan.FromMinutes(15);
+                o.Events.OnRedirectToLogin = context =>
+                {
+                    context.Response.Redirect("/");
+                    return Task.CompletedTask;
+                };
+            });
                 
             services.AddLocalApiAuth();
+
+            services.AddSingleton<KeyMetadataService>();
+            services.AddHostedService<MetadataInitService>();
 
             services.AddSpaStaticFiles(config => config.RootPath = "../identity-ui/build");
         }
@@ -85,6 +100,7 @@ namespace DS.Identity
             });
 
             UpdateIdentityDatabase(app, logger);
+            CreateTestTenants(app, logger);
             CreateTestUsers(userManager, logger).GetAwaiter().GetResult();
         }
 
@@ -103,6 +119,15 @@ namespace DS.Identity
             context?.IdentityResources.Recreate(Config.IdentityResources.Select(o => o.ToEntity()), (de, le) => de.Name == le.Name);
             context?.ApiScopes.Recreate(Config.ApiScopes.Select(o => o.ToEntity()), (de, le) => de.Name == le.Name);
             context?.Clients.Recreate(Config.Clients.Select(o => o.ToEntity()), (de, le) => de.ClientId == le.ClientId);
+            context?.SaveChanges();
+        }
+
+        private void CreateTestTenants(IApplicationBuilder app, ILogger logger)
+        {
+            logger.LogInformation("Creating tenants");
+            using var scope = app.ApplicationServices.CreateScope();
+            var context = scope.ServiceProvider.GetService<MultitenantIdentityDbContext>();
+            context?.Tenants.Recreate(Tenants, (de, le) => de.Id == le.Id);
             context?.SaveChanges();
         }
 
@@ -129,6 +154,13 @@ namespace DS.Identity
             }
         }
 
+        private static IEnumerable<Tenant> Tenants =>
+            new[]
+            {
+                new Tenant { Id = 1, Name = "happyteeth" },
+                new Tenant { Id = 2, Name = "superdent" }
+            };
+        
         private static IEnumerable<MultitenantUser> Users =>
             new[]
             {
@@ -139,7 +171,8 @@ namespace DS.Identity
                     Email = "sd@superdent.dk",
                     TenantName = "superdent",
                     PhoneNumber = "+380989997755",
-                    IsClinicAdmin = false
+                    IsClinicAdmin = false,
+                    TenantId = 2
                 },
                 new MultitenantUser
                 {
@@ -148,25 +181,28 @@ namespace DS.Identity
                     Email = "ht@happyteeth.dk",
                     TenantName = "happyteeth",
                     PhoneNumber = "+380989997755",
-                    IsClinicAdmin = false
+                    IsClinicAdmin = false,
+                    TenantId = 1
                 },
                 new MultitenantUser
                 {
                     Id = "772D9024-A03B-4607-8126-393AEFD88351",
                     UserName = "adm",
-                    Email = "avaver@gmail.com",
+                    Email = "admin@superdent.com",
                     TenantName = "superdent",
                     PhoneNumber = "+380989997755",
-                    IsClinicAdmin = true
+                    IsClinicAdmin = true,
+                    TenantId = 2
                 },
                 new MultitenantUser
                 {
                     Id = "48295BA6-5E3C-469C-9E36-5FA4EDD7AE0F",
                     UserName = "adm",
-                    Email = "avaver@gmail.com",
+                    Email = "admin@happyteeth.com",
                     TenantName = "happyteeth",
                     PhoneNumber = "+380989997755",
-                    IsClinicAdmin = true
+                    IsClinicAdmin = true,
+                    TenantId = 1
                 }
             };
     }

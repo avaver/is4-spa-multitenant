@@ -1,4 +1,5 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+﻿using System;
+using System.IdentityModel.Tokens.Jwt;
 using System.Runtime.InteropServices;
 using DS.Identity.IdentityServer;
 using DS.Identity.Multitenancy;
@@ -98,18 +99,21 @@ namespace DS.Identity.Extensions
 
         public static IServiceCollection AddLocalApiAuth(this IServiceCollection services)
         {
-            // Redirect to landing page if the user is not logged in as we don;t know which tenant user belongs to
-            services.ConfigureApplicationCookie(c =>
-            {
-                c.LoginPath = new PathString("/");
-            });
-            
             // For authenticating to account management controllers
-            services.AddAuthorization(o => o.DefaultPolicy = 
-                new AuthorizationPolicyBuilder()
-                    .AddAuthenticationSchemes(IdentityConstants.ApplicationScheme)
-                    .RequireAuthenticatedUser()
-                    .Build());
+            services.AddAuthorization(o =>
+            {
+                o.DefaultPolicy =
+                    new AuthorizationPolicyBuilder()
+                        .AddAuthenticationSchemes(IdentityConstants.ApplicationScheme)
+                        .RequireAuthenticatedUser()
+                        .Build();
+                o.AddPolicy(Constants.DsClinicAdminPolicy, b =>
+                {
+                    b.RequireAuthenticatedUser();
+                    b.RequireClaim(MultitenantClaimTypes.Tenant);
+                    b.RequireClaim(MultitenantClaimTypes.TenantAdmin, true.ToString().ToLowerInvariant());
+                });
+            });
 
             return services;
         }
