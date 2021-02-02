@@ -9,5 +9,8 @@ namespace DS.Identity.Multitenancy
         public string NormalizedTenantName { get; set; }
         
         public bool IsClinicAdmin { get; set; }
+        
+        public int TenantId { get; set; }
+        public Tenant Tenant { get; set; }
     }
 }

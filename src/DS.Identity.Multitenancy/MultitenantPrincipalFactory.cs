@@ -17,7 +17,7 @@ namespace DS.Identity.Multitenancy
             if (principal.Identity is ClaimsIdentity identity)
             {
                 identity.AddClaim(new Claim(MultitenantClaimTypes.Tenant, user.TenantName, ClaimValueTypes.String));
-                identity.AddClaim(new Claim(MultitenantClaimTypes.TenantAdmin, user.IsClinicAdmin.ToString(), ClaimValueTypes.Boolean));
+                identity.AddClaim(new Claim(MultitenantClaimTypes.TenantAdmin, user.IsClinicAdmin.ToString().ToLowerInvariant(), ClaimValueTypes.Boolean));
             }
             return principal;
         }

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 
 const Logout = () => {
   const [iframe, setIframe] = useState('');
-  const [message, setMessage] = useState('');
 
   useEffect(() => {
     const logoutId = new URLSearchParams(window.location.search).get('logoutId');
@@ -14,14 +13,10 @@ const Logout = () => {
         setIframe(data.iframeUrl);
       }
 
-      if (data.redirectUrl) {
-        window.location = data.redirectUrl;
-      } else {
-        setMessage('logged out.');
-      }
+      window.location = data.redirectUrl || '/';
     })();
   }, []);
-  return iframe ? <iframe title="logout" width={0} height={0} src={iframe}></iframe> : <div>{message}</div>;
+  return iframe ? <iframe title="logout" width={0} height={0} src={iframe}></iframe> : <></>;
 };
 
 export default Logout;

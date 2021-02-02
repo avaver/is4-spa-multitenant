@@ -69,6 +69,9 @@ namespace DS.Identity.Migrations.Sqlite.Migrations.Identity
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("TenantId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("TenantName")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -87,6 +90,8 @@ namespace DS.Identity.Migrations.Sqlite.Migrations.Identity
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
 
+                    b.HasIndex("TenantId");
+
                     b.HasIndex("NormalizedEmail", "NormalizedTenantName")
                         .IsUnique();
 
@@ -94,6 +99,53 @@ namespace DS.Identity.Migrations.Sqlite.Migrations.Identity
                         .IsUnique();
 
                     b.ToTable("AspNetUsers");
+                });
+
+            modelBuilder.Entity("DS.Identity.Multitenancy.Tenant", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AdminKeyId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Tenants");
+                });
+
+            modelBuilder.Entity("DS.Identity.Multitenancy.WebAuthnCredential", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AttestationCert")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MetadataIcon")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MetadataName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PublicKey")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SignCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("TenantId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("WebAuthnCredentials");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -224,6 +276,24 @@ namespace DS.Identity.Migrations.Sqlite.Migrations.Identity
                     b.ToTable("AspNetUserTokens");
                 });
 
+            modelBuilder.Entity("DS.Identity.Multitenancy.MultitenantUser", b =>
+                {
+                    b.HasOne("DS.Identity.Multitenancy.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("DS.Identity.Multitenancy.WebAuthnCredential", b =>
+                {
+                    b.HasOne("DS.Identity.Multitenancy.Tenant", null)
+                        .WithMany("Keys")
+                        .HasForeignKey("TenantId");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -273,6 +343,11 @@ namespace DS.Identity.Migrations.Sqlite.Migrations.Identity
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("DS.Identity.Multitenancy.Tenant", b =>
+                {
+                    b.Navigation("Keys");
                 });
 #pragma warning restore 612, 618
         }

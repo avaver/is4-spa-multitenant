@@ -72,6 +72,9 @@ namespace DS.Identity.Migrations.SqlServer.Migrations.Identity
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("TenantId")
+                        .HasColumnType("int");
+
                     b.Property<string>("TenantName")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -90,6 +93,8 @@ namespace DS.Identity.Migrations.SqlServer.Migrations.Identity
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
 
+                    b.HasIndex("TenantId");
+
                     b.HasIndex("NormalizedEmail", "NormalizedTenantName")
                         .IsUnique()
                         .HasFilter("[NormalizedEmail] IS NOT NULL AND [NormalizedTenantName] IS NOT NULL");
@@ -99,6 +104,54 @@ namespace DS.Identity.Migrations.SqlServer.Migrations.Identity
                         .HasFilter("[NormalizedUserName] IS NOT NULL AND [NormalizedTenantName] IS NOT NULL");
 
                     b.ToTable("AspNetUsers");
+                });
+
+            modelBuilder.Entity("DS.Identity.Multitenancy.Tenant", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .UseIdentityColumn();
+
+                    b.Property<string>("AdminKeyId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Tenants");
+                });
+
+            modelBuilder.Entity("DS.Identity.Multitenancy.WebAuthnCredential", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("AttestationCert")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MetadataIcon")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MetadataName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PublicKey")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("SignCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TenantId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("WebAuthnCredentials");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -232,6 +285,24 @@ namespace DS.Identity.Migrations.SqlServer.Migrations.Identity
                     b.ToTable("AspNetUserTokens");
                 });
 
+            modelBuilder.Entity("DS.Identity.Multitenancy.MultitenantUser", b =>
+                {
+                    b.HasOne("DS.Identity.Multitenancy.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("DS.Identity.Multitenancy.WebAuthnCredential", b =>
+                {
+                    b.HasOne("DS.Identity.Multitenancy.Tenant", null)
+                        .WithMany("Keys")
+                        .HasForeignKey("TenantId");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -281,6 +352,11 @@ namespace DS.Identity.Migrations.SqlServer.Migrations.Identity
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("DS.Identity.Multitenancy.Tenant", b =>
+                {
+                    b.Navigation("Keys");
                 });
 #pragma warning restore 612, 618
         }

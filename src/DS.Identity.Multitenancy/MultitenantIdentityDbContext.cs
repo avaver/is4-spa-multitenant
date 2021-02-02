@@ -6,6 +6,9 @@ namespace DS.Identity.Multitenancy
 {
     public class MultitenantIdentityDbContext : IdentityDbContext<MultitenantUser>
     {
+        public virtual DbSet<Tenant> Tenants { get; set; }
+        public virtual DbSet<WebAuthnCredential> WebAuthnCredentials { get; set; }
+        
         public MultitenantIdentityDbContext()
         {
         }
