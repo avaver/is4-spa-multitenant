@@ -1,0 +1,44 @@
+version: "3.8"
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2017-latest
+    ports:
+      - 1433:1433
+    volumes:
+      - sqlvolume:/var/opt/mssql
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "Aa123456"
+      
+  ds-identity-ui:
+    build: 
+      context: ./src/identity-ui
+      dockerfile: Dockerfile.dev
+    ports: 
+      - 3001:3001
+    volumes: 
+      - ./src/identity-ui:/app
+      - /app/node_modules
+    environment: 
+      CHOKIDAR_USEPOLLING: "true"
+      
+  ds-identity:
+    depends_on: 
+      - sqlserver
+      - ds-identity-ui
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 5001:5001
+    volumes:
+      - ~/dev/certs:/app/cert
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      DBTYPE: "SQLSERVER"
+      ASPNETCORE_URLS: "https://+:5001"
+      KESTREL__CERTIFICATES__DEFAULT__PATH: "/app/cert/dev.pfx"
+      KESTREL__CERTIFICATES__DEFAULT__PASSWORD: "HQHdgMfP9yydTV69"
+      
+volumes: 
+  sqlvolume:

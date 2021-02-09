@@ -1,0 +1,13 @@
+**/bin
+**/obj
+**/.git
+**/.toolstarget
+**/.DS_Store
+**/node_modules
+.dockerignore
+Dockerfile
+.env
+.gitignore
+.vs
+.vscode
+.idea

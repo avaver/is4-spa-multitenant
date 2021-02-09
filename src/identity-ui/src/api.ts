@@ -2,7 +2,10 @@ export const api = async (url: string, method: string = 'GET', body?: any) => {
   console.debug(`${method} ${url}`);
   const response = await fetch(url, {
     method,
-    ...(method === 'POST' && { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+    ...((method === 'POST' || method === 'PATCH') && {
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
   });
   if (response.redirected) {
     console.debug(`REDIRECT ${response.url}`);

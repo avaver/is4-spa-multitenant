@@ -5,56 +5,82 @@ import { api } from './api';
 import Card from 'react-bootstrap/Card';
 import Button from 'react-bootstrap/Button';
 import Table from 'react-bootstrap/Table';
+import Modal from 'react-bootstrap/Modal';
 
 const Account = () => {
   const [claims, setClaims] = useState<any>({});
-  const [tenant, setTenant] = useState<any>({});
+  const [keys, setKeys] = useState<any>([]);
+  const [users, setUsers] = useState<any>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const { createCredential, encodeCredential } = useWebAuthn();
 
-  const isAdmin = useCallback(() => {
-    return claims?.tenant_admin === 'true';
-  }, [claims?.tenant_admin]);
+  const isClinicAdmin = useCallback(() => claims?.tenant_admin === 'true', [claims?.tenant_admin]);
 
-  const isAdminKeySet = () => {
-    return tenant?.adminKeyId;
-  };
+  const isAdminKeySet = () => keys?.filter((k: any) => k.isAdminKey).length > 0;
 
-  const getAdminKey = () => {
-    var r = tenant?.keys?.filter((k: any) => k.id === tenant?.adminKeyId);
-    return r?.length === 1 ? r[0] : null;
-  };
-
-  const registerKey = async (admin: boolean) => {
-    const credential = await createCredential(
-      { id: uuidv4(), name: admin ? 'admin key' : 'device key', displayName: admin ? 'admin key' : 'device key' },
+  const registerKey = async (isAdminKey: boolean) => {
+    const rawCredential = await createCredential(
+      {
+        id: uuidv4(),
+        name: isAdminKey ? 'admin key' : 'device key',
+        displayName: isAdminKey ? 'admin key' : 'device key',
+      },
       { name: 'DentalSuite Nexta', id: 'account.dentalsuite.local' },
       arr2b64url(crypto.getRandomValues(new Uint8Array(32))),
       'direct',
-      { userVerification: 'discouraged', authenticatorAttachment: admin ? 'cross-platform' : 'platform' }
+      { userVerification: 'discouraged', authenticatorAttachment: isAdminKey ? 'cross-platform' : 'platform' }
     );
-    const encodedCredential = encodeCredential(credential);
-    console.info(encodedCredential);
-    const metadata = await api('/account/key', 'POST', { credential: encodedCredential, admin });
+    const credential = encodeCredential(rawCredential);
+    console.info(credential);
+    const metadata = await api('/account/keys', 'POST', { credential, isAdminKey });
     console.log(metadata);
-    const data = await api('/account/tenant');
-    setTenant(data);
+    const data = await api('/account/keys');
+    setKeys(data);
   };
 
-  // const verifyCredential = async (credId: string) => {
-  //   const credential = await requestCredential(
-  //     arr2b64url(crypto.getRandomValues(new Uint8Array(32))),
-  //     'discouraged',
-  //     undefined,
-  //     [credId]
-  //   );
-  //   console.log(credential);
-  // };
-
   const deleteKey = async (id: string) => {
-    await api('/account/key/' + id, 'DELETE');
-    const data = await api('/account/tenant');
-    setTenant(data);
+    await api('/account/keys/' + id, 'DELETE');
+    const data = await api('/account/keys');
+    setKeys(data);
+  };
+
+  const setUserLock = async (username: string, isLocked: boolean) => {
+    await api('/account/users/' + username, 'PATCH', { isLocked });
+    const data = await api('/account/users');
+    setUsers(data);
+  };
+
+  const createUser = async () => {
+    await api('/account/users/', 'POST', { username, password, isAdmin });
+    clearUserDialog();
+    const data = await api('/account/users');
+    setUsers(data);
+  };
+
+  const openEditUser = (u: any) => {
+    setEditMode(true);
+    setUsername(u.username);
+    setIsAdmin(u.isAdmin);
+    setShowModal(true);
+  };
+
+  const editUser = async () => {
+    await api('/account/users/' + username, 'PATCH', { password, isAdmin });
+    clearUserDialog();
+    const data = await api('/account/users');
+    setUsers(data);
+  };
+
+  const clearUserDialog = () => {
+    setShowModal(false);
+    setUsername('');
+    setPassword('');
+    setIsAdmin(false);
   };
 
   useEffect(() => {
@@ -62,10 +88,16 @@ const Account = () => {
       let data = await api('/account/authcookieclaims');
       setClaims(data);
       document.title = data?.name + ' | ' + data?.tenant;
-      data = await api('/account/tenant');
-      setTenant(data);
+
+      data = await api('/account/keys');
+      setKeys(data);
+
+      if (isClinicAdmin()) {
+        data = await api('/account/users');
+        setUsers(data);
+      }
     })();
-  }, [isAdmin]);
+  }, [isClinicAdmin]);
 
   return (
     <div className="container">
@@ -88,33 +120,25 @@ const Account = () => {
               Sign out
             </Button>
           </Card.Title>
-          <Table hover>
+          <Table>
             <tbody>
               <tr>
                 <td>Login name</td>
-                <td>{claims.name}</td>
-              </tr>
-              <tr>
-                <td>Email</td>
-                <td>{claims.email}</td>
-              </tr>
-              <tr>
-                <td>Phone number</td>
-                <td>{claims.phone_number}</td>
+                <td>{claims?.name}</td>
               </tr>
               <tr>
                 <td>Clinic</td>
-                <td>{claims.tenant}</td>
+                <td>{claims?.tenant}</td>
               </tr>
               <tr>
                 <td>Clinic admin</td>
-                <td className={isAdmin() ? 'text-success' : 'text-danger'}>{isAdmin() ? 'yes' : 'no'}</td>
+                <td className={isClinicAdmin() ? 'text-success' : 'text-danger'}>{isClinicAdmin() ? 'yes' : 'no'}</td>
               </tr>
             </tbody>
           </Table>
         </Card.Body>
       </Card>
-      <Card>
+      <Card className="mb-3">
         <Card.Body>
           <Card.Title className="mb-5">
             <svg
@@ -130,31 +154,18 @@ const Account = () => {
             </svg>
             <span className="ml-3">Admin and device keys</span>
           </Card.Title>
-          <Table striped>
+          <Table hover>
             <tbody>
-              <tr>
-                <td>{getAdminKey()?.metadataName || 'Admin key'}</td>
-                <td>
-                  <code>{isAdminKeySet() ? tenant.adminKeyId.substring(0, 20) + '...' : 'not set'}</code>
-                </td>
-                <td style={{ width: '10%' }}>
-                  {isAdmin() && (
-                    <Button variant="warning" size="sm" onClick={() => registerKey(true)}>
-                      <i className={isAdminKeySet() ? 'bi bi-pencil' : 'bi bi-plus'}></i>
-                    </Button>
-                  )}
-                </td>
-              </tr>
-              {tenant.keys
-                ?.filter((k: any) => k.id !== tenant.adminKeyId)
+              {keys
+                ?.sort((a: any, b: any) => (a.isAdminKey === b.isAdminKey ? 0 : a.isAdminKey ? -1 : 1))
                 .map((k: any) => (
                   <tr key={k.id}>
-                    <td>Device key</td>
+                    <td>{k.isAdminKey ? 'Admin Key' : 'Device key'}</td>
                     <td>
                       <code>{k.id.substring(0, 20) + '...'}</code>
                     </td>
-                    <td>
-                      {isAdmin() && (
+                    <td style={{ width: '20%' }} className="text-center">
+                      {isClinicAdmin() && (
                         <Button size="sm" variant="danger" onClick={() => deleteKey(k.id)}>
                           <i className="bi bi-trash"></i>
                         </Button>
@@ -164,13 +175,146 @@ const Account = () => {
                 ))}
             </tbody>
           </Table>
-          {isAdmin() && isAdminKeySet() && (
-            <Button variant="info" onClick={() => registerKey(false)}>
-              Register this device
+          {isClinicAdmin() && (
+            <Button variant="warning" onClick={() => registerKey(true)}>
+              Register Admin Key
+            </Button>
+          )}
+          {isClinicAdmin() && isAdminKeySet() && (
+            <Button variant="info" className="ml-3" onClick={() => registerKey(false)}>
+              Register This Device
             </Button>
           )}
         </Card.Body>
       </Card>
+      {isClinicAdmin() && (
+        <Card>
+          <Card.Body>
+            <Card.Title className="mb-5">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="48"
+                height="48"
+                fill="currentColor"
+                className="bi bi-people-fill"
+                viewBox="0 0 16 16"
+              >
+                <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+                <path
+                  fillRule="evenodd"
+                  d="M5.216 14A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216z"
+                />
+                <path d="M4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
+              </svg>
+              <span className="ml-3">Clinic Users</span>
+            </Card.Title>
+            <Table hover>
+              <tbody>
+                {users
+                  .sort((a: any, b: any) =>
+                    a.isAdmin === b.isAdmin ? a.username.localeCompare(b.username) : a.isAdmin ? -1 : 1
+                  )
+                  .map((u: any) => (
+                    <tr key={u.username}>
+                      <td>{u.username}</td>
+                      <td>{u.isAdmin && <span className="text-success">admin</span>}</td>
+                      <td style={{ width: '20%' }} className="text-center">
+                        <Button size="sm" variant="warning" onClick={() => openEditUser(u)}>
+                          <i className="bi bi-pencil"></i>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={u.isLocked ? 'danger' : 'success'}
+                          className="ml-3"
+                          disabled={u.username === claims.name}
+                          onClick={() => setUserLock(u.username, !u.isLocked)}
+                        >
+                          <i className={u.isLocked ? 'bi bi-lock' : 'bi bi-unlock'}></i>
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </Table>
+            {isClinicAdmin() && (
+              <Button
+                variant="warning"
+                onClick={() => {
+                  setEditMode(false);
+                  setShowModal(true);
+                }}
+              >
+                Create User
+              </Button>
+            )}
+          </Card.Body>
+        </Card>
+      )}
+      <Modal
+        show={showModal}
+        onHide={() => setShowModal(false)}
+        animation={false}
+        centered
+        backdrop="static"
+        keyboard={false}
+      >
+        <form>
+          <Modal.Body>
+            <div className="form-group mt-3">
+              <input
+                type="text"
+                className="form-control"
+                id="username"
+                placeholder="Username (initials)"
+                autoComplete="username"
+                required
+                readOnly={editMode}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <input
+                type="password"
+                className="form-control"
+                id="password"
+                placeholder={editMode ? 'New password (leave blank to keep current password)' : 'Password'}
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <div className="form-group custom-control custom-switch">
+              <input
+                type="checkbox"
+                className="custom-control-input"
+                id="isadmin"
+                checked={isAdmin}
+                onChange={() => setIsAdmin(!isAdmin)}
+              />
+              <label className="custom-control-label" htmlFor="isadmin">
+                Clinic Administrator
+              </label>
+            </div>
+            <div className="text-right">
+              <button
+                className="btn btn-primary"
+                type="submit"
+                onClick={(e) => {
+                  e.preventDefault();
+                  editMode ? editUser() : createUser();
+                }}
+              >
+                Save
+              </button>
+              <Button variant="danger" className="ml-3" onClick={() => clearUserDialog()}>
+                Cancel
+              </Button>
+            </div>
+          </Modal.Body>
+        </form>
+      </Modal>
     </div>
   );
 };

@@ -1,9 +1,6 @@
 ﻿using System;
-using System.IdentityModel.Tokens.Jwt;
-using System.Runtime.InteropServices;
 using DS.Identity.IdentityServer;
-using DS.Identity.Multitenancy;
-using IdentityModel;
+using DS.Identity.AppIdentity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +8,6 @@ using IdentityServer4.ResponseHandling;
 using IdentityServer4.Services;
 using IdentityServer4.Validation;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 
 namespace DS.Identity.Extensions
@@ -25,27 +21,27 @@ namespace DS.Identity.Extensions
 
         public static IServiceCollection AddMultitenantIdentity(this IServiceCollection services, IConfiguration configuration)
         {
-            var platform = configuration.GetValue<string>("platform");
-            if (platform == "mac" || string.IsNullOrEmpty(platform) && RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            var dbType = configuration.GetValue<string>("DBTYPE");
+            if (dbType == "SQLSERVER")
             {
-                services.AddDbContext<MultitenantIdentityDbContext>(o =>
-                    o.UseSqlite(configuration.GetConnectionString(SqliteConnection),
-                        sql => sql.MigrationsAssembly(SqliteMigrations)));
-            }
-            else if (platform == "win" || string.IsNullOrEmpty(platform) && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                services.AddDbContext<MultitenantIdentityDbContext>(o =>
+                services.AddDbContext<AppIdentityDbContext>(o =>
                     o.UseSqlServer(configuration.GetConnectionString(SqlServerConnection),
                         sql => sql.MigrationsAssembly(SqlServerMigrations)));
             }
+            else
+            {
+                services.AddDbContext<AppIdentityDbContext>(o =>
+                    o.UseSqlite(configuration.GetConnectionString(SqliteConnection),
+                        sql => sql.MigrationsAssembly(SqliteMigrations)));
+            }
 
-            services.AddScoped<MultitenantUserStore>();
-            services.AddScoped<IUserClaimsPrincipalFactory<MultitenantUser>, MultitenantPrincipalFactory>();
-            services.AddTransient<IMultitenantUserValidator<MultitenantUser>, MultitenantUserValidator>();
-            services.AddIdentity<MultitenantUser, IdentityRole>()
-                .AddEntityFrameworkStores<MultitenantIdentityDbContext>()
-                .AddUserManager<MultitenantUserManager>()
-                .AddUserStore<MultitenantUserStore>()
+            services.AddScoped<AppUserStore>();
+            services.AddScoped<IUserClaimsPrincipalFactory<AppUser>, AppPrincipalFactory>();
+            services.AddTransient<IAppUserValidator<AppUser>, AppUserValidator>();
+            services.AddIdentity<AppUser, IdentityRole>()
+                .AddEntityFrameworkStores<AppIdentityDbContext>()
+                .AddUserManager<AppUserManager>()
+                .AddUserStore<AppUserStore>()
                 .AddDefaultTokenProviders();
 
             return services;
@@ -53,7 +49,7 @@ namespace DS.Identity.Extensions
 
         public static IServiceCollection AddMultitenantIdentityServer(this IServiceCollection services, IConfiguration configuration)
         {
-            var platform = configuration.GetValue<string>("platform");
+            var dbType = configuration.GetValue<string>("DBTYPE");
             var connectionSqlServer = configuration.GetConnectionString(SqlServerConnection);
             var connectionSqlite = configuration.GetConnectionString(SqliteConnection);
             var builder = services.AddIdentityServer(options =>
@@ -62,37 +58,54 @@ namespace DS.Identity.Extensions
                     options.UserInteraction.LogoutUrl = "/logout";
                     options.UserInteraction.ErrorUrl = "/error";
                 })
-                .AddAspNetIdentity<MultitenantUser>()
+                .AddAspNetIdentity<AppUser>()
                 .AddDeveloperSigningCredential();
 
-            if (platform == "mac" || string.IsNullOrEmpty(platform) && RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            if (dbType == "SQLSERVER")
             {
                 builder
                     .AddConfigurationStore(o => o.ConfigureDbContext = b => b
-                        .UseSqlite(connectionSqlite, sql => sql
-                            .MigrationsAssembly(SqliteMigrations)
+                        .UseSqlServer(connectionSqlServer, sql => sql
+                            .MigrationsAssembly(SqlServerMigrations)
                             .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)))
                     .AddOperationalStore(o => o.ConfigureDbContext = b => b
-                        .UseSqlite(connectionSqlite, sql => sql
-                            .MigrationsAssembly(SqliteMigrations)
+                        .UseSqlServer(connectionSqlServer, sql => sql
+                            .MigrationsAssembly(SqlServerMigrations)
                             .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
             }
-            else if (platform == "win" || string.IsNullOrEmpty(platform) && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            else
             {
                 builder
                     .AddConfigurationStore(o => o.ConfigureDbContext = b => b
-                        .UseSqlServer(connectionSqlServer, sql => sql
-                            .MigrationsAssembly(SqlServerMigrations)
+                        .UseSqlite(connectionSqlite, sql => sql
+                            .MigrationsAssembly(SqliteMigrations)
                             .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)))
                     .AddOperationalStore(o => o.ConfigureDbContext = b => b
-                        .UseSqlServer(connectionSqlServer, sql => sql
-                            .MigrationsAssembly(SqlServerMigrations)
+                        .UseSqlite(connectionSqlite, sql => sql
+                            .MigrationsAssembly(SqliteMigrations)
                             .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
             }
 
             services.AddScoped<IAuthorizeInteractionResponseGenerator, DsInteractionResponseGenerator>();
             services.AddSingleton<IRedirectUriValidator, DsRedirectUriValidator>();
             services.AddSingleton<ICorsPolicyService, DsCorsPolicyService>();
+
+            return services;
+        }
+
+        public static IServiceCollection AddKeyAuthCookies(this IServiceCollection services)
+        {
+            services.AddAuthentication()
+                .AddCookie(Constants.KeyAuthScheme, o =>
+                {
+                    o.ExpireTimeSpan = TimeSpan.FromMinutes(15);
+                    o.Cookie.Name = Constants.KeyAuthScheme;
+                })
+                .AddCookie(Constants.KeyAuthUserIdScheme, o =>
+                {
+                    o.ExpireTimeSpan = TimeSpan.FromMinutes(3);
+                    o.Cookie.Name = Constants.KeyAuthUserIdScheme;
+                });
 
             return services;
         }
@@ -107,11 +120,11 @@ namespace DS.Identity.Extensions
                         .AddAuthenticationSchemes(IdentityConstants.ApplicationScheme)
                         .RequireAuthenticatedUser()
                         .Build();
-                o.AddPolicy(Constants.DsClinicAdminPolicy, b =>
+                o.AddPolicy(Constants.ClinicAdminPolicy, b =>
                 {
                     b.RequireAuthenticatedUser();
-                    b.RequireClaim(MultitenantClaimTypes.Tenant);
-                    b.RequireClaim(MultitenantClaimTypes.TenantAdmin, true.ToString().ToLowerInvariant());
+                    b.RequireClaim(AppClaimTypes.Tenant);
+                    b.RequireClaim(AppClaimTypes.TenantAdmin, true.ToString().ToLowerInvariant());
                 });
             });
 

@@ -6,6 +6,11 @@ namespace DS.Identity
         public const string DsApiScope = "dentalsuite.api";
         public const string DsProfileScope = "dentalsuite.profile";
 
-        public const string DsClinicAdminPolicy = "dentalsuite.clinicadmin";
+        public const string ClinicAdminPolicy = "dentalsuite.clinicadmin";
+
+        public const string DefaultTenant = "default";
+
+        public const string KeyAuthScheme = "dentalsuite.key";
+        public const string KeyAuthUserIdScheme = "dentalsuite.key.userid";
     }
 }

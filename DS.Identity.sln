@@ -11,7 +11,15 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DS.Identity.Migrations.SqlS
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DS.Identity.Migrations.Sqlite", "src\DS.Identity.Migrations.Sqlite\DS.Identity.Migrations.Sqlite.csproj", "{E2881AA7-64D4-417E-92A7-9E20ECD6BDFD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DS.Identity.Multitenancy", "src\DS.Identity.Multitenancy\DS.Identity.Multitenancy.csproj", "{A3C2C2C2-FB3C-4550-BF35-50A864808F79}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DS.Identity.AppIdentity", "src\DS.Identity.AppIdentity\DS.Identity.AppIdentity.csproj", "{A3C2C2C2-FB3C-4550-BF35-50A864808F79}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docker", "docker", "{1C74BFD2-2279-4E01-93B6-B3D2C98E20E2}"
+ProjectSection(SolutionItems) = preProject
+	docker-compose.yml = docker-compose.yml
+	Dockerfile = Dockerfile
+	.dockerignore = .dockerignore
+	.gitignore = .gitignore
+EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

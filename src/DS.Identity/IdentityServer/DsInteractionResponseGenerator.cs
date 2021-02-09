@@ -1,6 +1,6 @@
 using System.Linq;
 using System.Threading.Tasks;
-using DS.Identity.Multitenancy;
+using DS.Identity.AppIdentity;
 using IdentityServer4.Models;
 using IdentityServer4.ResponseHandling;
 using IdentityServer4.Services;
@@ -23,7 +23,7 @@ namespace DS.Identity.IdentityServer
             {
                 var acr = request.Raw["acr_values"]?.Split(" ").FirstOrDefault(a => a.ToLowerInvariant().StartsWith("tenant:"));
                 var tenantAcr = acr?.ToLowerInvariant().Replace("tenant:", "");
-                var claim = request.Subject?.Claims.SingleOrDefault(c => c.Type.ToLowerInvariant() == MultitenantClaimTypes.Tenant);
+                var claim = request.Subject?.Claims.SingleOrDefault(c => c.Type.ToLowerInvariant() == AppClaimTypes.Tenant);
                 var tenantClaim = claim?.Value.ToLowerInvariant();
                 if (!string.IsNullOrEmpty(tenantAcr) && !string.IsNullOrEmpty(tenantClaim))
                 {

@@ -7,7 +7,7 @@ namespace DS.Identity.Extensions
 {
     public static class DbSetExtensions
     {
-        public  static void Recreate<TEntity>(this DbSet<TEntity> dbEntities, IEnumerable<TEntity> localEntities, Func<TEntity, TEntity, bool> sameEntities) where TEntity : class
+        public static void Recreate<TEntity>(this DbSet<TEntity> dbEntities, IEnumerable<TEntity> localEntities, Func<TEntity, TEntity, bool> sameEntities) where TEntity : class
         {
             foreach (var localEntity in localEntities)
             {

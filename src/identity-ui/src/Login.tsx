@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
+import { api } from './api';
 import useWebAuthn from './webAuthn/useWebAuthn';
 import { arr2b64url } from './webAuthn/utils';
 
 const Login = () => {
-  const { requestCredential } = useWebAuthn();
+  const { requestCredential, encodeCredential } = useWebAuthn();
 
   const [tenant, setTenant] = useState('');
   const [username, setUsername] = useState('');
@@ -12,46 +13,39 @@ const Login = () => {
 
   const login = async () => {
     const returnUrl = new URLSearchParams(window.location.search).get('ReturnUrl');
-    const response = await fetch('/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, tenant, returnUrl: returnUrl || '/account' }),
-    });
+    let data = await api('/auth/login', 'POST', { username, password, returnUrl });
 
-    if (response.status !== 200) {
-      setStatus('Login failed: ' + response.statusText);
+    if (data?.returnUrl) {
+      window.location.href = data.returnUrl;
       return;
-    }
-
-    const data = await response.json();
-    if (data?.keys?.length > 0) {
-      await requestCredential(
+    } else if (data?.keys?.length > 0) {
+      var rawCredential = await requestCredential(
         arr2b64url(crypto.getRandomValues(new Uint8Array(32))),
         'discouraged',
         undefined,
         data.keys
       );
+      const credential = encodeCredential(rawCredential);
+      console.info(credential);
+      data = await api('/auth/keylogin', 'POST', credential);
+      if (data.returnUrl) {
+        window.location.href = data.returnUrl;
+        return;
+      }
     }
-    if (data?.redirectUrl) {
-      window.location.href = data.redirectUrl;
-    }
+
+    setStatus('Login failed: ' + data.error || 'unknown error');
   };
 
   useEffect(() => {
     const returnUrl = new URLSearchParams(window.location.search).get('ReturnUrl');
-    // if (!returnUrl) {
-    //   window.location.assign('/error?message=invalid login request');
-    //   return;
-    // }
-    const urlTenant = new URLSearchParams(window.location.search).get('tenant');
     const acrValues = new URLSearchParams(decodeURI(returnUrl!)).get('acr_values');
     const acrTenant = acrValues?.toLowerCase().replace('tenant:', '').split(' ')[0];
-    const tenant = urlTenant || acrTenant;
-    if (!tenant) {
+    if (!acrTenant) {
       window.location.assign('/error?message=tenant is missing');
       return;
     }
-    setTenant(tenant);
+    setTenant(acrTenant);
   }, []);
 
   return (

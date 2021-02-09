@@ -26,8 +26,8 @@
   </ItemGroup>
   
   <ItemGroup>
+    <ProjectReference Include="..\DS.Identity.AppIdentity\DS.Identity.AppIdentity.csproj" />
     <ProjectReference Include="..\DS.Identity.Migrations.Sqlite\DS.Identity.Migrations.Sqlite.csproj" />
     <ProjectReference Include="..\DS.Identity.Migrations.SqlServer\DS.Identity.Migrations.SqlServer.csproj" />
-    <ProjectReference Include="..\DS.Identity.Multitenancy\DS.Identity.Multitenancy.csproj" />
   </ItemGroup>
 </Project>

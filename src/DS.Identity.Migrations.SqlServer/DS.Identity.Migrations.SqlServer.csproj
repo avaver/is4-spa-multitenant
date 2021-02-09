@@ -9,9 +9,9 @@
         <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="5.0.2" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="5.0.2" />
     </ItemGroup>
-    
+
     <ItemGroup>
-      <ProjectReference Include="../DS.Identity.Multitenancy/DS.Identity.Multitenancy.csproj" />
+      <ProjectReference Include="..\DS.Identity.AppIdentity\DS.Identity.AppIdentity.csproj" />
     </ItemGroup>
 
 </Project>

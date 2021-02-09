@@ -1,15 +1,13 @@
+using System;
 using System.Linq;
-using System.Security.Claims;
-using System.Text.Json;
 using System.Threading.Tasks;
-using DS.Identity.Multitenancy;
+using DS.Identity.FIDO.WebAuthn.BrowserContracts;
+using DS.Identity.AppIdentity;
+using DS.Identity.Extensions;
 using DS.Identity.Services;
-using DS.Identity.WebAuthn;
-using DS.Identity.WebAuthn.Model;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace DS.Identity.Controllers
@@ -22,99 +20,138 @@ namespace DS.Identity.Controllers
         public class CreateKeyRequest
         {
             public PublicKeyCredentialAttestation Credential { get; set; }
-            public bool Admin { get; set; }
+            public bool IsAdminKey { get; set; }
         }
-        
-        private readonly ILogger<AccountController> _logger;
-        private readonly MultitenantIdentityDbContext _context;
-        private readonly KeyMetadataService _metadataService;
-        
-        public AccountController(ILogger<AccountController> logger, MultitenantIdentityDbContext context, KeyMetadataService metadataService)
+
+        public class UserDto
         {
-            _logger = logger;
-            _context = context;
+            public string Username { get; set; }
+            public string Password { get; set; }
+            public bool? IsAdmin { get; set; }
+            public bool? IsLocked { get; set; }
+        }
+
+        private readonly AppUserManager _userManager;
+        private readonly KeyCredentialManager _keyManager;
+        private readonly FidoMetadataService _metadataService;
+        private readonly ILogger<AccountController> _logger;
+
+        public AccountController(AppUserManager userManager, KeyCredentialManager keyManager, AppIdentityDbContext context, FidoMetadataService metadataService, ILogger<AccountController> logger)
+        {
+            _userManager = userManager;
+            _keyManager = keyManager;
             _metadataService = metadataService;
+            _logger = logger;
         }
 
         [HttpGet]
         public IActionResult AuthCookieClaims()
         {
-            _logger.LogInformation("AuthCookie claims requested");
+            _logger.LogInformation("Requested claims for user {0} (tenant: {1})", User.Identity?.Name, User.Tenant());
             return Ok(User.Claims
                 .OrderBy(c => c.Type)
                 .ToDictionary(c => c.Type, c => c.Value));
         }
 
         [HttpGet]
-        public async Task<IActionResult> Tenant()
+        public async Task<IActionResult> Keys()
         {
-            _logger.LogInformation("Tenant information requested");
-            var tenant = await GetTenant();
-            return Ok(tenant);
+            _logger.LogInformation("Requested authentication keys for tenant {0} by {1}", User.Tenant(), User.Identity?.Name);
+            var keys = await _keyManager.GetTenantKeysAsync(User.Tenant());
+            return Ok(keys);
         }
 
         [HttpPost]
-        [Authorize(Constants.DsClinicAdminPolicy)]
-        public async Task<IActionResult> Key([FromBody] CreateKeyRequest request)
+        [Authorize(Constants.ClinicAdminPolicy)]
+        public async Task<IActionResult> Keys([FromBody] CreateKeyRequest request)
         {
-            var credentialAttestation = new CredentialAttestation(request.Credential);
+            _logger.LogInformation("Adding {0} authentication key {1} to tenant {2} by {3}", request.IsAdminKey ? "admin" : "device", request.Credential.Id, User.Tenant(), User.Identity?.Name);
+            var credentialAttestation = request.Credential.ToCredentialAttestation();
             var metadata = await _metadataService.GetMetadataAsync(credentialAttestation.Attestation.AuthenticatorData.AttestedCredentialData.Aaguid);
-            var key = new WebAuthnCredential
+            var credential = new KeyCredential
             {
                 Id = WebEncoders.Base64UrlEncode(credentialAttestation.CredentialId),
                 PublicKey = WebEncoders.Base64UrlEncode(credentialAttestation.Attestation.AuthenticatorData
                     .AttestedCredentialData.PublicKey.Cbor.EncodeToBytes()),
                 MetadataName = metadata?.Description,
-                MetadataIcon = metadata?.Icon
+                MetadataIcon = metadata?.Icon,
+                TenantName = User.Tenant(),
+                IsAdminKey = request.IsAdminKey
             };
-            var tenant = await GetTenant();
-            tenant.Keys.Add(key);
-            if (request.Admin)
-            {
-                if (!string.IsNullOrEmpty(tenant.AdminKeyId))
-                {
-                    await DeleteKeyAsync(tenant.AdminKeyId);
-                }
-                tenant.AdminKeyId = key.Id;
-            }
-            
-            await _context.SaveChangesAsync();
-            _logger.LogInformation("Registered {0} key {1}", request.Admin ? "admin" : "device", request.Credential.Id);
-            return new JsonResult(metadata);
+            await _keyManager.CreateAsync(credential);
+            _logger.LogInformation("Registered {0} authentication key {1}", request.IsAdminKey ? "admin" : "device", request.Credential.Id);
+            return Ok(metadata);
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Constants.DsClinicAdminPolicy)]
-        public async Task<IActionResult> Key(string id)
+        [Authorize(Constants.ClinicAdminPolicy)]
+        public async Task<IActionResult> Keys(string id)
         {
-            await DeleteKeyAsync(id);
+            _logger.LogInformation("Deleting authentication key {0} from tenant {1} by {2}", id, User.Tenant(), User.Identity?.Name);
+            var key = await _keyManager.FindByIdAsync(id);
+            if (key == null)
+            {
+                return NotFound();
+            }
+
+            await _keyManager.DeleteAsync(key);
             return Ok();
         }
 
-        private async Task<Tenant> GetTenant()
+        [HttpGet]
+        [Authorize(Constants.ClinicAdminPolicy)]
+        public async Task<IActionResult> Users()
         {
-            var tenantName = User.FindFirstValue(MultitenantClaimTypes.Tenant);
-            var tenant = (await _context.Tenants
-                .Include(t => t.Keys)
-                .Where(t => t.Name == tenantName)
-                .ToListAsync()).Single();
-            return tenant;
+            _logger.LogInformation("Requested users list for tenant {0} by {1}", User.Tenant(), User.Identity?.Name);
+            var users = await _userManager.FindByTenantAsync(User.Tenant());
+            return Ok(users.Select(u => new UserDto { Username = u.UserName, IsAdmin = u.IsClinicAdmin, IsLocked = DateTimeOffset.UtcNow < (u.LockoutEnd ?? DateTimeOffset.MinValue) }));
         }
 
-        private async Task DeleteKeyAsync(string id)
+        [HttpPost]
+        [Authorize(Constants.ClinicAdminPolicy)]
+        public async Task<IActionResult> Users([FromBody] UserDto request)
         {
-            var tenant = await GetTenant();
-            var key = tenant.Keys.SingleOrDefault(k => k.Id == id);
-            if (key != null)
+            var user = new AppUser
             {
-                tenant.Keys.Remove(key);
-                if (tenant.AdminKeyId == key.Id)
-                {
-                    tenant.AdminKeyId = null;
-                }
+                TenantName = User.Tenant(),
+                UserName = request.Username,
+                IsClinicAdmin = request.IsAdmin.GetValueOrDefault(),
+                LockoutEnd = request.IsLocked.GetValueOrDefault() ? DateTimeOffset.MaxValue : DateTimeOffset.MinValue
+            };
+            await _userManager.CreateAsync(user, request.Password);
+            
+            return Ok();
+        }
+
+        [HttpPatch("{username}")]
+        [Authorize(Constants.ClinicAdminPolicy)]
+        public async Task<IActionResult> Users(string username, [FromBody] UserDto request)
+        {
+            _logger.LogInformation("Updating user {0} in tenant {1} by {2}", username, User.Tenant(), User.Identity?.Name);
+            var user = await _userManager.FindByNameAndTenantAsync(username, User.Tenant());
+            if (user == null)
+            {
+                return NotFound();
+            }
+            
+            if (!string.IsNullOrEmpty(request.Password))
+            {
+                await _userManager.RemovePasswordAsync(user);
+                await _userManager.AddPasswordAsync(user, request.Password);
             }
 
-            await _context.SaveChangesAsync();
+            if (request.IsLocked.HasValue)
+            {
+                user.LockoutEnd = request.IsLocked.Value ? DateTimeOffset.MaxValue : DateTimeOffset.MinValue;
+            }
+
+            if (request.IsAdmin.HasValue)
+            {
+                user.IsClinicAdmin = request.IsAdmin.Value;
+            }
+            await _userManager.UpdateAsync(user);
+
+            return Ok();
         }
     }
 }
