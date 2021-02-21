@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace DS.Identity.Extensions
 {
-    public static class DbSetExtensions
+    public static class EntityFrameworkExtensions
     {
         public static void Recreate<TEntity>(this DbSet<TEntity> dbEntities, IEnumerable<TEntity> localEntities, Func<TEntity, TEntity, bool> sameEntities) where TEntity : class
         {
